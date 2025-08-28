@@ -1,0 +1,38 @@
+{
+  "name": "inferyx-automation-framework",
+  "version": "1.0.0",
+  "description": "Playwright automation framework with Page Object Model for Inferyx platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:module": "playwright test --grep",
+    "test:administration": "playwright test tests/Administration/",
+    "test:organization": "playwright test tests/administration/organization",
+    "test:platform": "playwright test tests/Platform/",
+    "test:datacatalog": "playwright test tests/DataCatalog/",
+    "report": "allure generate allure-results --clean && allure open",
+    "report:generate": "allure generate allure-results --clean",
+    "report:open": "allure open",
+    "clean": "rimraf allure-results allure-report test-results"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "testing",
+    "page-object-model"
+  ],
+  "author": "Test Automation Team",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "allure-commandline": "^2.34.1",
+    "allure-playwright": "^2.10.0",
+    "rimraf": "^5.0.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  }
+}

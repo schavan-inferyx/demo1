@@ -1,0 +1,114 @@
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'TEST_SCOPE',
+            choices: ['all', 'module', 'submodule', 'testcase'],
+            description: 'Select test execution scope'
+        )
+        choice(
+            name: 'MODULE',
+            choices: ['Administration', 'Platform', 'DataCatalog'],
+            description: 'Select module to test (when scope is module or submodule)'
+        )
+        choice(
+            name: 'SUBMODULE',
+            choices: ['Organization', 'Account', 'Activity', 'Login', 'Application'],
+            description: 'Select submodule to test (when scope is submodule)'
+        )
+        string(
+            name: 'TEST_CASE_ID',
+            defaultValue: '',
+            description: 'Specific test case ID to run (e.g., TC--12.11.423)'
+        )
+        choice(
+            name: 'BROWSER',
+            choices: ['chromium', 'firefox', 'webkit'],
+            description: 'Browser to run tests on'
+        )
+    }
+    
+    environment {
+        CI = 'true'
+        HEADLESS = 'true'
+        BASE_URL = 'https://dev.inferyx.com/admin/#/login'
+        TEST_USERNAME = credentials('inferyx-username')
+        TEST_PASSWORD = credentials('inferyx-password')
+        DOWNLOAD_PATH = "${WORKSPACE}/downloads"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci'
+                sh 'npx playwright install'
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                script {
+                    def testCommand = "npx playwright test --project=${params.BROWSER}"
+                    
+                    switch(params.TEST_SCOPE) {
+                        case 'module':
+                            testCommand += " tests/${params.MODULE}/"
+                            break
+                        case 'submodule':
+                            testCommand += " tests/${params.MODULE}/${params.SUBMODULE}/"
+                            break
+                        case 'testcase':
+                            if (params.TEST_CASE_ID) {
+                                testCommand += " --grep '${params.TEST_CASE_ID}'"
+                            }
+                            break
+                        default:
+                            // Run all tests
+                            break
+                    }
+                    
+                    sh testCommand
+                }
+            }
+        }
+        
+        stage('Generate Reports') {
+            steps {
+                sh 'npm run report:generate'
+            }
+        }
+    }
+    
+    post {
+        always {
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'allure-report',
+                reportFiles: 'index.html',
+                reportName: 'Allure Report'
+            ])
+            
+            publishTestResults testResultsPattern: 'test-results/junit.xml'
+            
+            archiveArtifacts artifacts: 'downloads/**, test-results/**, allure-report/**', 
+                            allowEmptyArchive: true
+        }
+        
+        failure {
+            emailext (
+                subject: "Test Execution Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: "Test execution failed. Please check the build logs and reports.",
+                to: "${env.CHANGE_AUTHOR_EMAIL}"
+            )
+        }
+    }
+}
