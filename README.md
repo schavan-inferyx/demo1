@@ -110,3 +110,5 @@ npx playwright show-report
 3. Add proper Allure annotations
 4. Keep page objects with locators only
 5. Write comprehensive test descriptions
+
+#
